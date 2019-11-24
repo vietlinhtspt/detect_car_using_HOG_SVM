@@ -77,16 +77,17 @@ def image_to_features(image, feat_extraction_params):
         hog_features.append(hog_feature)
     hog_features = np.ravel(hog_features)
 
-    # Get color features
-    color_features = binned_features(feature_image, size=spatial_size)
-    histogram_features = color_histogram_feature(
-        feature_image, nbins=hist_bins)
+    # # Get color features
+    # color_features = binned_features(feature_image, size=spatial_size)
+    # histogram_features = color_histogram_feature(
+    #     feature_image, nbins=hist_bins)
 
-    # Concatenate all features to a singer vector
-    features = np.hstack(
-        (color_features, histogram_features, hog_features)).reshape(-1)
+    # # Concatenate all features to a singer vector
+    # features = np.hstack(
+    #     (color_features, histogram_features, hog_features)).reshape(-1)
 
-    return features
+    # return features
+    return hog_features
 
 
 def extract_features_from_file_list(file_list, feat_extraction_params):

@@ -9,6 +9,7 @@ from feature_extraction import image_to_features, binned_features, color_histogr
 # generate random integer values
 from random import seed
 from random import randint
+import matplotlib.pyplot as plt
 
 
 def normalize_image(img):
@@ -252,7 +253,7 @@ def find_cars(image, y_start, y_stop, scale, svc, feature_scaler, feature_extrac
     # 64 was the original sampling rate, with 8 cells and 8 pix per cell
     window = 64
     n_blocks_per_window = (window // pix_per_cell) - 1
-    cells_per_step = 4  # Instead of overlap, define how many cells to step
+    cells_per_step = 8  # Instead of overlap, define how many cells to step
     n_x_steps = (n_x_blocks - n_blocks_per_window) // cells_per_step
     n_y_steps = (n_y_blocks - n_blocks_per_window) // cells_per_step
 
@@ -307,10 +308,11 @@ def find_cars(image, y_start, y_stop, scale, svc, feature_scaler, feature_extrac
                 cv2.rectangle(draw_img, tl_corner_draw,
                               br_corner_draw, (0, 0, 255), 6)
 
-                name = str(randint(0, 1000000000)) + '.jpg'
-                out_path = './output_images/' + name
+                # Show image after predict
                 out_image = draw_img[xbox_left:ytop_draw + y_start, xbox_left + win_draw:
                                      ytop_draw + win_draw + y_start]
+                name = str(randint(0, 1000000000)) + '.jpg'
+                out_path = "./output_images/" + "crop_car_" + name
                 cv2.imwrite(out_path, out_image)
 
                 hot_windows.append((tl_corner_draw, br_corner_draw))
@@ -322,8 +324,8 @@ def detect_car(frame, svc, feature_scaler, feat_extraction_params, keep_state=Fa
 
     hot_windows = []
 
-    for subsample in np.arange(1, 3, 0.5):
-        hot_windows += find_cars(frame, 200, 300, subsample,
+    for subsample in np.arange(1, 3):
+        hot_windows += find_cars(frame, 160, 280, subsample,
                                  svc, feature_scaler, feat_extraction_params)
 
     # compute heatmaps positive windows found
@@ -342,12 +344,13 @@ def detect_car(frame, svc, feature_scaler, feat_extraction_params, keep_state=Fa
     #     heatmap), colormap=cv2.COLORMAP_HOT)         # draw heatmap
     # img_labeling = cv2.applyColorMap(normalize_image(
     #     labeled_frame), colormap=cv2.COLORMAP_HOT)  # draw label
-    img_detection = draw_bouding_boxes(
-        frame.copy(), labeled_frame, num_objects)        # draw detected bboxes
+    if num_objects != 0:
+        img_detection = draw_bouding_boxes(
+            frame.copy(), labeled_frame, num_objects)        # draw detected bboxes
 
-    name = str(randint(0, 1000000000)) + '.jpg'
-    out_path = './output_images/' + name
-    cv2.imwrite(out_path, img_detection)
+        name = str(randint(0, 1000000000)) + '.jpg'
+        out_path = './output_images/' + name
+        cv2.imwrite(out_path, img_detection)
 
     # img_blend_out = prepare_output_blend(
     #     frame, img_hot_windows, img_heatmap, img_labeling, img_detection)
@@ -380,7 +383,7 @@ if __name__ == '__main__':
 
     # Create a VideoCapture object and read from input file
     # If the input is the camera, pass 0 instead of the video file name
-    cap = cv2.VideoCapture('video1.avi')
+    cap = cv2.VideoCapture('video1.mp4')
 
     # Check if camera opened successfully
     if (cap.isOpened() == False):
