@@ -6,6 +6,9 @@ import scipy
 import time
 import matplotlib.pyplot as plt
 from feature_extraction import image_to_features, binned_features, color_histogram_features, get_hog_features
+# generate random integer values
+from random import seed
+from random import randint
 
 
 def normalize_image(img):
@@ -304,6 +307,12 @@ def find_cars(image, y_start, y_stop, scale, svc, feature_scaler, feature_extrac
                 cv2.rectangle(draw_img, tl_corner_draw,
                               br_corner_draw, (0, 0, 255), 6)
 
+                name = str(randint(0, 1000000000)) + '.jpg'
+                out_path = './output_images/' + name
+                out_image = draw_img[xbox_left:ytop_draw + y_start, xbox_left + win_draw:
+                                     ytop_draw + win_draw + y_start]
+                cv2.imwrite(out_path, out_image)
+
                 hot_windows.append((tl_corner_draw, br_corner_draw))
 
     return hot_windows
@@ -314,7 +323,7 @@ def detect_car(frame, svc, feature_scaler, feat_extraction_params, keep_state=Fa
     hot_windows = []
 
     for subsample in np.arange(1, 3, 0.5):
-        hot_windows += find_cars(frame, 400, 600, subsample,
+        hot_windows += find_cars(frame, 200, 300, subsample,
                                  svc, feature_scaler, feat_extraction_params)
 
     # compute heatmaps positive windows found
@@ -333,34 +342,64 @@ def detect_car(frame, svc, feature_scaler, feat_extraction_params, keep_state=Fa
     #     heatmap), colormap=cv2.COLORMAP_HOT)         # draw heatmap
     # img_labeling = cv2.applyColorMap(normalize_image(
     #     labeled_frame), colormap=cv2.COLORMAP_HOT)  # draw label
-    # img_detection = draw_bouding_boxes(
-    #     frame.copy(), labeled_frame, num_objects)        # draw detected bboxes
+    img_detection = draw_bouding_boxes(
+        frame.copy(), labeled_frame, num_objects)        # draw detected bboxes
+
+    name = str(randint(0, 1000000000)) + '.jpg'
+    out_path = './output_images/' + name
+    cv2.imwrite(out_path, img_detection)
 
     # img_blend_out = prepare_output_blend(
     #     frame, img_hot_windows, img_heatmap, img_labeling, img_detection)
 
     # return img_blend_out
-    return labeled_frame, num_objects
+    # return labeled_frame, num_objects
 
 
 if __name__ == '__main__':
-    # test on images in "test_images" directory
-    test_img_dir = './test_images'
+    # # test on images in "test_images" directory
+    # test_img_dir = './test_images'
 
-    # load model
+    # # load model
     svc = pickle.load(open('./data/svm_trained.pickle', 'rb'))
     feature_scaler = pickle.load(open('./data/feature_scaler.pickle', 'rb'))
     feat_extraction_params = pickle.load(
         open('./data/feat_extraction_params.pickle', 'rb'))
 
-    for test_img in os.listdir(test_img_dir):
-        t = time.time()
+    # for test_img in os.listdir(test_img_dir):
+    #     t = time.time()
 
-        image = cv2.imread(os.path.join(test_img_dir, test_img))
+    #     image = cv2.imread(os.path.join(test_img_dir, test_img))
 
-        frame_out = detect_car(image, svc, feature_scaler,
-                               feat_extraction_params, verbose=False)
+    #     frame_out = detect_car(image, svc, feature_scaler,
+    #                            feat_extraction_params, verbose=False)
+    #     out_path = 'output_images/' + test_img
+    #     cv2.imwrite(out_path, frame_out)
 
-        cv2.imwrite('output_images/{}'.format(test_img), frame_out)
+    #     print('Done. Elapsed: {:.02f}'.format(time.time()-t))
 
-        print('Done. Elapsed: {:.02f}'.format(time.time()-t))
+    # Create a VideoCapture object and read from input file
+    # If the input is the camera, pass 0 instead of the video file name
+    cap = cv2.VideoCapture('video1.avi')
+
+    # Check if camera opened successfully
+    if (cap.isOpened() == False):
+        print("Error opening video stream or file")
+
+    # Read until video is completed
+    while(cap.isOpened()):
+        # Capture frame-by-frame
+        ret, frame = cap.read()
+        if ret == True:
+
+            t = time.time()
+            print(frame.shape)
+
+            frame_out = detect_car(frame, svc, feature_scaler,
+                                   feat_extraction_params, verbose=False)
+
+            print('Done. Elapsed: {:.02f}'.format(time.time()-t))
+
+        # Break the loop
+        else:
+            break
