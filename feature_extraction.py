@@ -56,7 +56,7 @@ def image_to_features(image, feat_extraction_params):
     features : ndarray
         array of features which describes the input image.
     """
-    color_space = feat_extraction_params['color_space']
+
     orient = feat_extraction_params['orient']
     pix_per_cell = feat_extraction_params['pix_per_cell']
     cell_per_block = feat_extraction_params['cell_per_block']
@@ -70,12 +70,15 @@ def image_to_features(image, feat_extraction_params):
     image_features = []
 
     hog_features = []
-    for channel in range(feature_image.shape[2]):
-        hog_feature, hog_image = get_hog_features(feature_image[:, :, channel],
-                                                  orient, pix_per_cell, cell_per_block,
-                                                  verbose=True, feature_vec=True)
-        hog_features.append(hog_feature)
-    hog_features = np.ravel(hog_features)
+    # for channel in range(feature_image.shape[2]):
+    #     hog_feature, hog_image = get_hog_features(feature_image[:, :, channel],
+    #                                               orient, pix_per_cell, cell_per_block,
+    #                                               verbose=True, feature_vec=True)
+    #     hog_features.append(hog_feature)
+    hog_feature, hog_image = get_hog_features(feature_image[:, :],
+                                              orient, pix_per_cell, cell_per_block,
+                                              verbose=True, feature_vec=True)
+    # hog_features = np.ravel(hog_features)
 
     # # Get color features
     # color_features = binned_features(feature_image, size=spatial_size)
@@ -87,7 +90,7 @@ def image_to_features(image, feat_extraction_params):
     #     (color_features, histogram_features, hog_features)).reshape(-1)
 
     # return features
-    return hog_features
+    return hog_feature
 
 
 def extract_features_from_file_list(file_list, feat_extraction_params):
@@ -112,6 +115,7 @@ def extract_features_from_file_list(file_list, feat_extraction_params):
 
         resize_h, resize_w = feat_extraction_params['resize_h'], feat_extraction_params['resize_w']
         image = cv2.resize(cv2.imread(file), (resize_w, resize_h))
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
         # compute the features of this particular image, then append to the list
         file_features = image_to_features(image, feat_extraction_params)

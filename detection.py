@@ -13,10 +13,7 @@ import matplotlib.pyplot as plt
 
 
 def normalize_image(img):
-    """
-    Normalize image between 0 and 255 and cast to uint8
-    (useful for visualization)
-    """
+
     img = np.float32(img)
 
     img = img / img.max() * 255
@@ -40,44 +37,9 @@ def draw_bouding_boxes(frame, labeled, num_cars):
     return frame
 
 
-def prepare_output_blend(frame, img_hot_windows, img_heatmap, img_labeling, img_detection):
-
-    h, w, c = frame.shape
-
-    # decide the size of sub-image images
-    subimg_ratio = 0.25
-    subimg_h, subimg_w = int(subimg_ratio * h), int(subimg_ratio * w)
-
-    # resize to sub-images images from various stages of the pipeline
-    subimg_hot_windows = cv2.resize(
-        img_hot_windows, dsize=(subimg_w, subimg_h))
-    subimg_heatmap = cv2.resize(img_heatmap, dsize=(subimg_w, subimg_h))
-    subimg_labeling = cv2.resize(img_labeling, dsize=(subimg_w, subimg_h))
-
-    off_x, off_y = 20, 45
-
-    # add a semi-transparent rectangle to highlight sub-images on the left
-    mask = cv2.rectangle(img_detection.copy(), (0, 0),
-                         (2*off_x + subimg_w, h), (0, 0, 0), thickness=cv2.FILLED)
-    img_blend = cv2.addWeighted(
-        src1=mask, alpha=0.2, src2=img_detection, beta=0.8, gamma=0)
-
-    # stitch sub-images
-    img_blend[off_y:off_y+subimg_h, off_x:off_x +
-              subimg_w, :] = subimg_hot_windows
-    img_blend[2*off_y+subimg_h:2*(off_y+subimg_h),
-              off_x:off_x+subimg_w, :] = subimg_heatmap
-    img_blend[3*off_y+2*subimg_h:3 *
-              (off_y+subimg_h), off_x:off_x+subimg_w, :] = subimg_labeling
-
-    return img_blend
-
-
 def slide_window(img, x_start_stop=[None, None], y_start_stop=[None, None],
                  xy_window=(64, 64), xy_overlap=(0.5, 0.5)):
-    """
-    Implementation of a sliding window in a region of interest of the image.
-    """
+
     # If x and/or y start/stop positions not defined, set to image size
     if x_start_stop[0] is None:
         x_start_stop[0] = 0
@@ -120,14 +82,7 @@ def slide_window(img, x_start_stop=[None, None], y_start_stop=[None, None],
 
 
 def draw_boxes(img, bbox_list, color=(0, 0, 255), thick=6):
-    """
-    Draw all bounding boxes in `bbox_list` onto a given image.
-    :param img: input image
-    :param bbox_list: list of bounding boxes
-    :param color: color used for drawing boxes
-    :param thick: thickness of the box line
-    :return: a new image with the bounding boxes drawn
-    """
+
     # Make a copy of the image
     img_copy = np.copy(img)
 
@@ -173,10 +128,8 @@ def search_windows(img, windows, clf, scaler, feat_extraction_params):
 
 
 def compute_heatmap_from_detections(frame, hot_windows, threshold=5, verbose=False):
-    """
-    Compute heatmaps from windows classified as positive, in order to filter false positives.
-    """
-    h, w, c = frame.shape
+
+    h, w = frame.shape
 
     heatmap = np.zeros(shape=(h, w), dtype=np.uint8)
 
@@ -198,31 +151,7 @@ def compute_heatmap_from_detections(frame, hot_windows, threshold=5, verbose=Fal
 
 
 def find_cars(image, y_start, y_stop, scale, svc, feature_scaler, feature_extraction_params):
-    """
-    Extract features from the input image using hog sub-sampling and make predictions on these.
 
-    Parameters
-    ----------
-    image : ndarray
-        Input image.
-    y_start : int
-        Lower bound of detection area on 'y' axis.
-    y_stop : int
-        Upper bound of detection area on 'y' axis.
-    scale : float
-        Factor used to subsample the image before feature extraction.
-    svc : Classifier
-        Pretrained classifier used to perform prediction of extracted features.
-    feature_scaler : sklearn.preprocessing.StandardScaler
-        StandardScaler used to perform feature scaling at training time.
-    feature_extraction_params : dict
-        dictionary of parameters that control the process of feature extraction.
-
-    Returns
-    -------
-    hot_windows : list
-        list of bounding boxes (defined by top-left and bottom-right corners) in which cars have been detected
-    """
     hot_windows = []
 
     resize_h = feature_extraction_params['resize_h']
@@ -235,20 +164,16 @@ def find_cars(image, y_start, y_stop, scale, svc, feature_scaler, feature_extrac
 
     draw_img = np.copy(image)
 
-    image_crop = image[y_start:y_stop, :, :]
+    image_crop = image[y_start:y_stop, :]
 
     if scale != 1:
         imshape = image_crop.shape
         image_crop = cv2.resize(
             image_crop, (np.int(imshape[1] / scale), np.int(imshape[0] / scale)))
 
-    channel1 = image_crop[:, :, 0]
-    channel2 = image_crop[:, :, 1]
-    channel3 = image_crop[:, :, 2]
-
     # Define blocks and steps as above
-    n_x_blocks = (channel1.shape[1] // pix_per_cell) - 1
-    n_y_blocks = (channel1.shape[0] // pix_per_cell) - 1
+    n_x_blocks = (image_crop.shape[1] // pix_per_cell) - 1
+    n_y_blocks = (image_crop.shape[0] // pix_per_cell) - 1
 
     # 64 was the original sampling rate, with 8 cells and 8 pix per cell
     window = 64
@@ -257,45 +182,20 @@ def find_cars(image, y_start, y_stop, scale, svc, feature_scaler, feature_extrac
     n_x_steps = (n_x_blocks - n_blocks_per_window) // cells_per_step
     n_y_steps = (n_y_blocks - n_blocks_per_window) // cells_per_step
 
-    # Compute individual channel HOG features for the entire image
-    hog1, _ = get_hog_features(channel1, orient, pix_per_cell,
-                               cell_per_block, feature_vec=False)
-    hog2, _ = get_hog_features(channel2, orient, pix_per_cell,
-                               cell_per_block, feature_vec=False)
-    hog3, _ = get_hog_features(channel3, orient, pix_per_cell,
-                               cell_per_block, feature_vec=False)
+    hog, _ = get_hog_features(image_crop, orient, pix_per_cell,
+                              cell_per_block, feature_vec=False)
 
     for xb in range(n_x_steps):
         for yb in range(n_y_steps):
             y_pos = yb * cells_per_step
             x_pos = xb * cells_per_step
 
-            # Extract HOG for this patch
-            hog_feat1 = hog1[y_pos:y_pos + n_blocks_per_window,
-                             x_pos:x_pos + n_blocks_per_window].ravel()
-            hog_feat2 = hog2[y_pos:y_pos + n_blocks_per_window,
-                             x_pos:x_pos + n_blocks_per_window].ravel()
-            hog_feat3 = hog3[y_pos:y_pos + n_blocks_per_window,
-                             x_pos:x_pos + n_blocks_per_window].ravel()
-            hog_features = np.hstack((hog_feat1, hog_feat2, hog_feat3))
-
+            hog_features = hog[y_pos:y_pos + n_blocks_per_window,
+                               x_pos:x_pos + n_blocks_per_window].ravel().reshape(1, -1)
             x_left = x_pos * pix_per_cell
             y_top = y_pos * pix_per_cell
 
-            # Extract the image patch
-            subimg = cv2.resize(
-                image_crop[y_top:y_top + window, x_left:x_left + window], (resize_w, resize_h))
-
-            # Get color features
-            color_features = binned_features(subimg, size=spatial_size)
-            histogram_features = color_histogram_features(
-                subimg, nbins=hist_bins)
-
-            # Scale features and make a prediction
-            test_features = feature_scaler.transform(
-                np.hstack((color_features, histogram_features, hog_features)).reshape(1, -1))
-
-            test_prediction = svc.predict(test_features)
+            test_prediction = svc.predict(hog_features)
 
             if test_prediction == 1:
                 xbox_left = np.int(x_left * scale)
@@ -308,13 +208,6 @@ def find_cars(image, y_start, y_stop, scale, svc, feature_scaler, feature_extrac
                 cv2.rectangle(draw_img, tl_corner_draw,
                               br_corner_draw, (0, 0, 255), 6)
 
-                # Show image after predict
-                out_image = draw_img[xbox_left:ytop_draw + y_start, xbox_left + win_draw:
-                                     ytop_draw + win_draw + y_start]
-                name = str(randint(0, 1000000000)) + '.jpg'
-                out_path = "./output_images/" + "crop_car_" + name
-                cv2.imwrite(out_path, out_image)
-
                 hot_windows.append((tl_corner_draw, br_corner_draw))
 
     return hot_windows
@@ -322,10 +215,12 @@ def find_cars(image, y_start, y_stop, scale, svc, feature_scaler, feature_extrac
 
 def detect_car(frame, svc, feature_scaler, feat_extraction_params, keep_state=False, verbose=False):
 
+    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+
     hot_windows = []
 
-    for subsample in np.arange(1, 3):
-        hot_windows += find_cars(frame, 160, 280, subsample,
+    for subsample in np.arange(1, 2):
+        hot_windows += find_cars(frame, 152, 280, subsample,
                                  svc, feature_scaler, feat_extraction_params)
 
     # compute heatmaps positive windows found
@@ -337,49 +232,15 @@ def detect_car(frame, svc, feature_scaler, feat_extraction_params, keep_state=Fa
     labeled_frame, num_objects = scipy.ndimage.measurements.label(
         heatmap_thresh)
 
-    # # prepare images for blend
-    # img_hot_windows = draw_boxes(frame, hot_windows, color=(
-    #     0, 0, 255), thick=2)                 # show pos windows
-    # img_heatmap = cv2.applyColorMap(normalize_image(
-    #     heatmap), colormap=cv2.COLORMAP_HOT)         # draw heatmap
-    # img_labeling = cv2.applyColorMap(normalize_image(
-    #     labeled_frame), colormap=cv2.COLORMAP_HOT)  # draw label
-    if num_objects != 0:
-        img_detection = draw_bouding_boxes(
-            frame.copy(), labeled_frame, num_objects)        # draw detected bboxes
-
-        name = str(randint(0, 1000000000)) + '.jpg'
-        out_path = './output_images/' + name
-        cv2.imwrite(out_path, img_detection)
-
-    # img_blend_out = prepare_output_blend(
-    #     frame, img_hot_windows, img_heatmap, img_labeling, img_detection)
-
-    # return img_blend_out
-    # return labeled_frame, num_objects
+    return labeled_frame, num_objects
 
 
 if __name__ == '__main__':
-    # # test on images in "test_images" directory
-    # test_img_dir = './test_images'
-
     # # load model
     svc = pickle.load(open('./data/svm_trained.pickle', 'rb'))
     feature_scaler = pickle.load(open('./data/feature_scaler.pickle', 'rb'))
     feat_extraction_params = pickle.load(
         open('./data/feat_extraction_params.pickle', 'rb'))
-
-    # for test_img in os.listdir(test_img_dir):
-    #     t = time.time()
-
-    #     image = cv2.imread(os.path.join(test_img_dir, test_img))
-
-    #     frame_out = detect_car(image, svc, feature_scaler,
-    #                            feat_extraction_params, verbose=False)
-    #     out_path = 'output_images/' + test_img
-    #     cv2.imwrite(out_path, frame_out)
-
-    #     print('Done. Elapsed: {:.02f}'.format(time.time()-t))
 
     # Create a VideoCapture object and read from input file
     # If the input is the camera, pass 0 instead of the video file name
@@ -398,8 +259,16 @@ if __name__ == '__main__':
             t = time.time()
             print(frame.shape)
 
-            frame_out = detect_car(frame, svc, feature_scaler,
-                                   feat_extraction_params, verbose=False)
+            labeled_frame, num_objects = detect_car(frame, svc, feature_scaler,
+                                                    feat_extraction_params, verbose=False)
+
+            if num_objects != 0:
+                img_detection = draw_bouding_boxes(
+                    frame.copy(), labeled_frame, num_objects)        # draw detected bboxes
+
+                name = str(randint(0, 1000000000)) + '.jpg'
+                out_path = './output_images/' + name
+                cv2.imwrite(out_path, img_detection)
 
             print('Done. Elapsed: {:.02f}'.format(time.time()-t))
 
